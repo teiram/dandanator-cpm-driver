@@ -76,10 +76,6 @@ plus3:
         ld      bc, 0x7ffd
         out     (c), a
 
-        ;; DEBUG
-        ld      a, 4
-        out     (ulaport), a
-
         ; Select All RAM Mode 2 (4, 5, 6, 3) 
         ld      a, (variable_zone + value_1ffd_offset)
         or      1
