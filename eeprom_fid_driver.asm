@@ -209,7 +209,7 @@ FID_D_READ:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_WRITE:
-        ld      a, 4
+        ld      a, 5
         out     (0xfe), a
         sub     a
         scf
@@ -227,7 +227,7 @@ FID_D_WRITE:
 ;               $00 => OK
 ;               B corrupt
 FID_D_FLUSH:
-        ld      a, 5
+        ld      a, 6
         out     (0xfe), a
         scf
         xor a
@@ -260,4 +260,4 @@ dup_error_msg:
 noletter_error_msg:
         db      "Drive in use", $0d, $0a, $ff
 ok_ems_msg:
-        db      "Dandanator Disk Driver succesfully registered", $0d, $0a, $ff
+        db      "Dandanator Disk Driver 0.1 succesfully registered", $0d, $0a, $ff
