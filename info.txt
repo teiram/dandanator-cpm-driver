@@ -1,0 +1,19 @@
+Slot 0:
+ - Common initialization
+ - Copy CP/M loader to RAM
+ - Jump to load code
+
+ - CP/M Loader
+ - FID Driver
+
+Slot 1:
+ - S10CPM3.EMS (1)
+
+Slot 2:
+ - S10CPM3.EMS (2)
+
+Slot 3:
+...
+Slot 31
+ - CP/M Disk 
+
