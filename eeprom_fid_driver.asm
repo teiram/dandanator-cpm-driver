@@ -18,19 +18,35 @@ db      0                       ;Start boundary
 db      0                       ;End boundary
 db      0,0,0,0,0,0,0,0,0,0,0,0 ;Reserved
 
+; Data buffer
 buffer_addr:
         dw      0
-dpblk:     ;DISK PARAMETER BLOCK
-        DW      26              ;SECTORS PER TRACK      +0
-        DB      3               ;BLOCK SHIFT FACTOR     +2
-        DB      7               ;BLOCK MASK             +3
-        DB      0               ;NULL MASK              +4
-        DW      242             ;DISK SIZE-1            +5
-        DW      63              ;DIRECTORY MAX          +7
-        DB      192             ;ALLOC 0                +9
-        DB      0               ;ALLOC 1                +10
-        DW      16              ;CHECK SIZE             +11
-        DW      2               ;TRACK OFFSET           +13
+
+;DISK PARAMETER BLOCK
+dpblk:
+        dw      26      ;spt. 128byte records per track                 +0
+        db      3       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
+        db      7       ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
+        db      0       ;exm. Extent mask                               +4
+        dw      242     ;dsm. Number of blocks on the disk - 1          +5
+        dw      63      ;drm. Number of directory entries - 1           +7
+        db      $f0     ;al0. Directory allocation bitmap (1st byte)    +9
+        db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
+        dw      16      ;Checksum vector size, 0 for a fixed disc
+                        ; No. directory entries/4, rounded up.          +11
+        dw      0       ;off. Number of reserved tracks                 +13
+        db      0       ;psh. Physical sector shift, 0 = 128-byte sectors
+                        ;1 = 256-byte sectors,  2 = 512-byte sectors... +15
+        db      0       ;phm. Physical sector mask,  0 = 128-byte sectors
+                        ;1 = 256-byte sectors, 3 = 512-byte sectors...  +16
+
+; The directory allocation bitmap is interpreted as:
+
+;       al0                     al1
+;       b7b6b5b4b3b2b1b0        b7b6b5b4b3b2b1b0
+;        1 1 1 1 0 0 0 0         0 0 0 0 0 0 0 0
+;               - ie, in this example, the first 4 blocks of the disc 
+;               contain the directory.
 
 
 ;=============================================
@@ -167,9 +183,9 @@ fdl_errors:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_READ:
+jr FID_D_READ
         ld      a, 4
         out     (0xfe), a
-
         ld      a, 1
         ccf
         ret
