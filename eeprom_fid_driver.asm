@@ -26,20 +26,20 @@ buffer_addr:
 
 ;DISK PARAMETER BLOCK
 dpblk:
-        dw      26      ;spt. 128byte records per track                 +0
+        dw      36      ;spt. 128byte records per track                 +0
         db      3       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
         db      7       ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
         db      0       ;exm. Extent mask                               +4
-        dw      242     ;dsm. Number of blocks on the disk - 1          +5
+        dw      174     ;dsm. Number of blocks on the disk - 1          +5
         dw      63      ;drm. Number of directory entries - 1           +7
-        db      $f0     ;al0. Directory allocation bitmap (1st byte)    +9
+        db      $c0     ;al0. Directory allocation bitmap (1st byte)    +9
         db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
         dw      16      ;Checksum vector size, 0 for a fixed disc
                         ; No. directory entries/4, rounded up.          +11
         dw      0       ;off. Number of reserved tracks                 +13
-        db      0       ;psh. Physical sector shift, 0 = 128-byte sectors
+        db      2       ;psh. Physical sector shift, 0 = 128-byte sectors
                         ;1 = 256-byte sectors,  2 = 512-byte sectors... +15
-        db      0       ;phm. Physical sector mask,  0 = 128-byte sectors
+        db      3       ;phm. Physical sector mask,  0 = 128-byte sectors
                         ;1 = 256-byte sectors, 3 = 512-byte sectors...  +16
 
 ; The directory allocation bitmap is interpreted as:
@@ -190,20 +190,21 @@ FID_D_READ:
 
                                 ; Calculate track offset, assuming
                                 ; that each track has 9 sectors
+                                ; 512 bytes each
         push    hl
         pop     bc
-        ccf
+        and     a               ; Clear Carry
+
         sla     c
         sla     c
         sla     c               
         add     hl, bc          ; hl contains track * 9
         add     hl, de          ; hl contains track * 9 + sector
 
+
         push    hl              ; hl will hold the byte offset (aligned to 4k)
         pop     de              ; de will hold the slot offset 
 
-        push    hl              ; We need it later to calculate the offset in 
-                                ; buffer area
 
         ld      b, 5
 shift_slot:        
@@ -217,22 +218,38 @@ shift_pos:
         rl      h
         djnz    shift_pos       ; hl holds the byte offset
 
+        push    hl              ; We need it later to calculate the offset in 
+                                ; buffer area
+
         ld      l, 0
         ld      a, h
-        and     $c0
+        and     $f0
         ld      h, a            ; Aligned to 4K boundaries
 
+        di
         ; Switch to normal mapping mode (We assume we are running in
         ;       bank 5 from $4000 onwards, as stated in our FID header)
         ld      a, (SVC_BANK_68)
-        and     0xfe            ; Clear special mode banking
-        out     ($1ffd), a
+        and     $fe            ; Clear special mode banking
+        ld      bc, $1ffd
+        out     (c), a
+
+        ; We need page 3 in $C000 to have access to CP/M variables
+        ld      a, (SVC_BANK_05)
+        and     $f8
+        or      3
+        ld      bc, $7ffd
+        out     (c), a
+
+        push    hl              ; Save source address in slot 0
 
         ; Unlock dandanator commands
+        push    de
         ld      a, 46
         ld      d, 16
         ld      e, 16
         call    sendspcmdlc
+        pop     de
 
         ; Ask dandanator to map needed slot
         ld      a, e
@@ -242,6 +259,7 @@ shift_pos:
         ld      e, 0            ; No further actions
         call    sendspcmdlc   
 
+        pop     hl
         ld      de, (buffer_addr)
         ld      bc, 4096
         ldir                    ; Copy 4K from mapped EEPROM to buffer_addr
@@ -252,21 +270,36 @@ shift_pos:
         ld      e, 4            ; Block commands afterwards
         call    sendspcmdlc
 
+        ; Restore $7ffd value
+        ld      a, (SVC_BANK_05)
+        out     ($7ffd), a
+
         ; Switch back to allram mode
         ld      a, (SVC_BANK_68)
         out     ($1ffd), a
 
-        ; Return block offset in buffer_addr
-        ld      hl, buffer_addr
+        ei
+
+        ; Calculate block offset in buffer_addr
+        ld      hl, (buffer_addr)
         pop     de
+        ld      a, d
+        and     $0f     ; Offset in the 4K buffer
+        ld      d, a
         add     hl, de
-        push    iy
+
+        push    iy      ; IY holds the transfer buffer address
         pop     de
+
         ld      bc, 512
         ldir
 
-        ld      a, 1
-        ccf
+        ;DEBUG
+        ld      a, 0
+        out     (0xfe), a
+
+        ld      a, 0
+        scf             ; Set carry (success)
         ret
 
 ;=============================================
@@ -345,7 +378,11 @@ FID_D_FLUSH:
 ;       Always
 ;               Other flags A BC DE corrupt
 FID_D_MESS:
-        or a
+        ld      a, 6
+        out     (0xfe), a
+
+        ld      hl, generic_error_msg
+        scf
         ret
 
 include dandanator.asm
@@ -358,3 +395,5 @@ noletter_error_msg:
         db      "Drive in use", $0d, $0a, $ff
 ok_ems_msg:
         db      "Dandanator Disk Driver 0.1 succesfully registered", $0d, $0a, $ff
+generic_error_msg:
+        db      "Generic message error", $0d, $0a, $ff
