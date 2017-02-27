@@ -1,10 +1,12 @@
+SVC_BANK_05             EQU     $ + 0FE00h      ;Last value written to $7ffd
+SVC_BANK_68             EQU     $ + 0FE01h      ;Last value written to $1ffd
 SVC_SCB                 EQU     $ + 0FE03H      ; SCB Address
 SVC_D_HOOK              EQU     $ + 0FE05H      ; Hook in a disk device
 SVC_ALLOCATE            EQU     $ + 0FE07H      ; Allocate memory area
 SVC_DEALLOCATE          EQU     $ + 0FE09H      ; Return allocated memory
-SCB_BIOS_DRV            equ     $F9DA           ; unidad actual de la BIOS
-SCB_CCP_DRV             equ     $F9AF           ; Unidad actual del CPP
-VERSION                 EQU     0001H           ; VERSION NUMBER IN BCD
+SCB_BIOS_DRV            equ     $F9DA           ; Current BIOS drive
+SCB_CCP_DRV             equ     $F9AF           ; Current CCP drive
+VERSION                 EQU     0001H           ; Version number (BCD encoded)
 sector_size             EQU     $1000           ; Block to save/load from eeprom
 ;
 ; FID Header
@@ -12,10 +14,10 @@ sector_size             EQU     $1000           ; Block to save/load from eeprom
 jp      FID_EMS
 db      'SPECTRUM'              ;Name
 db      'FID'                   ;Type
-db      VERSION                 ;Version number
-db      0000H                   ;checksum
-db      0                       ;Start boundary
-db      0                       ;End boundary
+dw      VERSION                 ;Version number
+dw      0000H                   ;checksum
+db      40h                     ;Start boundary
+db      80h                     ;End boundary
 db      0,0,0,0,0,0,0,0,0,0,0,0 ;Reserved
 
 ; Data buffer
@@ -183,9 +185,86 @@ fdl_errors:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_READ:
-jr FID_D_READ
         ld      a, 4
         out     (0xfe), a
+
+                                ; Calculate track offset, assuming
+                                ; that each track has 9 sectors
+        push    hl
+        pop     bc
+        ccf
+        sla     c
+        sla     c
+        sla     c               
+        add     hl, bc          ; hl contains track * 9
+        add     hl, de          ; hl contains track * 9 + sector
+
+        push    hl              ; hl will hold the byte offset (aligned to 4k)
+        pop     de              ; de will hold the slot offset 
+
+        push    hl              ; We need it later to calculate the offset in 
+                                ; buffer area
+
+        ld      b, 5
+shift_slot:        
+        srl     d
+        rr      e
+        djnz    shift_slot      ; e holds the slot offset (>> 5)
+
+        ld      b, 9
+shift_pos:
+        sla     l
+        rl      h
+        djnz    shift_pos       ; hl holds the byte offset
+
+        ld      l, 0
+        ld      a, h
+        and     $c0
+        ld      h, a            ; Aligned to 4K boundaries
+
+        ; Switch to normal mapping mode (We assume we are running in
+        ;       bank 5 from $4000 onwards, as stated in our FID header)
+        ld      a, (SVC_BANK_68)
+        and     0xfe            ; Clear special mode banking
+        out     ($1ffd), a
+
+        ; Unlock dandanator commands
+        ld      a, 46
+        ld      d, 16
+        ld      e, 16
+        call    sendspcmdlc
+
+        ; Ask dandanator to map needed slot
+        ld      a, e
+        add     a, 3 + 1        ; Add disk slot offset (plus command shift)
+        ld      d, a            ; Slot 
+        ld      a, 40           ; Command 40
+        ld      e, 0            ; No further actions
+        call    sendspcmdlc   
+
+        ld      de, (buffer_addr)
+        ld      bc, 4096
+        ldir                    ; Copy 4K from mapped EEPROM to buffer_addr
+
+        ; Switch to internal ROM and block commands afterwards
+        ld      a, 40           ; Command 40
+        ld      d, 33           ; Slot 33 (Internal rom)
+        ld      e, 4            ; Block commands afterwards
+        call    sendspcmdlc
+
+        ; Switch back to allram mode
+        ld      a, (SVC_BANK_68)
+        out     ($1ffd), a
+
+        ; Return block offset in buffer_addr
+        ld      hl, buffer_addr
+        pop     de
+        add     hl, de
+        push    iy
+        pop     de
+        ld      bc, 512
+        ldir
+
         ld      a, 1
         ccf
         ret
@@ -268,6 +347,8 @@ FID_D_FLUSH:
 FID_D_MESS:
         or a
         ret
+
+include dandanator.asm
 
 nomem_error_msg:
         db      "No enough free memory", $0d, $0a, $ff
