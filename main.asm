@@ -28,18 +28,4 @@ fid_driver_end:
 org 0x4000
 incbin S10CPM3.EMS
 
-org 0xc000
-dpblk:     ;DISK PARAMETER BLOCK
-DW      26              ;SECTORS PER TRACK
-DB      3               ;BLOCK SHIFT FACTOR
-DB      7               ;BLOCK MASK
-DB      0               ;NULL MASK
-DW      242             ;DISK SIZE-1
-DW      63              ;DIRECTORY MAX
-DB      192             ;ALLOC 0
-DB      0               ;ALLOC 1
-DW      16              ;CHECK SIZE
-DW      2               ;TRACK OFFSET
-
-ds 0x10000 - $
-
+ds 0xc000 - $
