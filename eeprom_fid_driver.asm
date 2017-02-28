@@ -34,9 +34,9 @@ dpblk:
         dw      63      ;drm. Number of directory entries - 1           +7
         db      $c0     ;al0. Directory allocation bitmap (1st byte)    +9
         db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
-        dw      16      ;Checksum vector size, 0 for a fixed disc
+        dw      $8000   ;Checksum vector size, 0 for a fixed disc
                         ; No. directory entries/4, rounded up.          +11
-        dw      0       ;off. Number of reserved tracks                 +13
+        dw      1       ;off. Number of reserved tracks                 +13
         db      2       ;psh. Physical sector shift, 0 = 128-byte sectors
                         ;1 = 256-byte sectors,  2 = 512-byte sectors... +15
         db      3       ;phm. Physical sector mask,  0 = 128-byte sectors
@@ -70,12 +70,13 @@ FID_EMS:
         ld      a, 2
         out     (0xfe), a
 
-        ld      a, (SCB_BIOS_DRV)
-        and     0xff
-        jr      z, fid_ems_allocate
-        ld      hl, dup_error_msg
-        or      a
-        ret
+;        So far I don't think we need this
+;        ld      a, (SCB_BIOS_DRV)
+;        and     0xff
+;        jr      z, fid_ems_allocate
+;        ld      hl, dup_error_msg
+;        or      a
+;        ret
 fid_ems_allocate:
         ld      de, sector_size
         call    SVC_ALLOCATE
@@ -83,17 +84,35 @@ fid_ems_allocate:
         ld      hl, nomem_error_msg
         ret
 fid_ems_init:
-        ld      (buffer_addr), hl
-        scf
+        ld      (buffer_addr), hl       ; Memory allocated by SVC_ALLOCATE
 
-        ld      b, 2
-        call    FID_D_LOGON
-        jr      nc, error_fid_d_logon
-
+        ld      de, FID_JUMP_BLOCK 
+        ld      hl, (dpblk + 5)
+        inc     hl                      ; Block count
+        ; 2 times block count divided by 8
+        ; Bytes for a double bit allocation table
+        srl     h
+        rr      l       ; Divide by 2
+        srl     h
+        rr      l       ; Divide by 4
+        ld      ix, $0000
+        ld      iy, $0000 
+        ld      b, 2    ; Drive C
+        call    SVC_D_HOOK
+        jr      nc, fdl_errors
+        push    ix                      ; Storage for DPB
+        pop     de
+        ld      hl, dpblk
+        ld      bc, 17
+        ldir                            ; Copy DPB to allocated area
         ld      hl, ok_ems_msg
         scf
-
-error_fid_d_logon:
+        ret
+fdl_errors:
+        and     $01
+        ld      hl, nomem_error_msg
+        ret     nz
+        ld      hl, noletter_error_msg
         ret
 
 FID_JUMP_BLOCK:
@@ -133,27 +152,8 @@ FID_D_LOGON:
         ld      a, 1
         out     (0xfe), a
 
-        ld      de, FID_JUMP_BLOCK 
-        ld      hl, (dpblk + 5)
-        inc     hl                      ; Block count
-        ld      ix, $0000               ; Not sure about this
-        ld      iy, $0000               ; Not sure about this
-        call    SVC_D_HOOK
-        jr      nc, fdl_errors
-        push    ix                      ; Storage for DPB
-        pop     de
-        ld      hl, dpblk
-        ld      bc, 17
-        ldir                            ; Copy DPB
-
         xor a
         scf
-        ret
-fdl_errors:
-        and     $01
-        ld      hl, nomem_error_msg
-        ret     nz
-        ld      hl, noletter_error_msg
         ret
 
 ;=============================================
