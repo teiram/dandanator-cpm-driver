@@ -40,9 +40,19 @@
         cp      $ff             ; Port 2ffd always returns FF on a Plus2A
         jr      nz, plus3
 
-        ld      hl, relocation_area + plus2a_patch_offset
-        ld      de, 0xc202
-        ld      bc, plus2a_patch_end - plus2a_patch
+        ld      hl, relocation_area + a_drive_init_patch_offset
+        ld      de, a_drive_init_patch_address + $c000
+        ld      bc, a_drive_init_patch_end - a_drive_init_patch
+        ldir
+
+        ld      hl, relocation_area + no_b_drive_patch_offset
+        ld      de, no_b_drive_patch_address + $c000
+        ld      bc, no_b_drive_patch_end - no_b_drive_patch
+        ldir
+
+        ld      hl, relocation_area + invalid_floppy_patch_offset
+        ld      de, invalid_floppy_patch_address + $c000
+        ld      bc, invalid_floppy_patch_end - invalid_floppy_patch
         ldir
         
 plus3:
@@ -160,12 +170,21 @@ fid_no_driver           db 0
 
 fid_loader_end:
 
-plus2a_patch_offset equ $ - relocated_area_start
-plus2a_patch:
-        ld a, $60
-        nop
-        nop
-        nop
-        nop
-plus2a_patch_end:
+a_drive_init_patch_address equ     $202
+a_drive_init_patch_offset equ $ - relocated_area_start
+a_drive_init_patch:
+        db      0, 0, 0
+a_drive_init_patch_end:
 
+no_b_drive_patch_address        equ     $1d7c
+no_b_drive_patch_offset         equ $ - relocated_area_start
+no_b_drive_patch:
+        db      0, 0, 0
+no_b_drive_patch_end:
+
+invalid_floppy_patch_address    equ     $1b24
+invalid_floppy_patch_offset     equ $ - relocated_area_start
+invalid_floppy_patch:
+        ld      a, 4
+        ret
+invalid_floppy_patch_end:
