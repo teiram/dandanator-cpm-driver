@@ -20,36 +20,16 @@ db      40h                     ;Start boundary
 db      80h                     ;End boundary
 db      0,0,0,0,0,0,0,0,0,0,0,0 ;Reserved
 
+;===================
+; Variables
+;===================
 ; Data buffer
 buffer_addr:
         dw      0
-
-;DISK PARAMETER BLOCK
-dpblk:
-        dw      36      ;spt. 128byte records per track                 +0
-        db      3       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
-        db      7       ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
-        db      0       ;exm. Extent mask                               +4
-        dw      174     ;dsm. Number of blocks on the disk - 1          +5
-        dw      63      ;drm. Number of directory entries - 1           +7
-        db      $c0     ;al0. Directory allocation bitmap (1st byte)    +9
-        db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
-        dw      $8000   ;Checksum vector size, 0 for a fixed disc
-                        ; No. directory entries/4, rounded up.          +11
-        dw      1       ;off. Number of reserved tracks                 +13
-        db      2       ;psh. Physical sector shift, 0 = 128-byte sectors
-                        ;1 = 256-byte sectors,  2 = 512-byte sectors... +15
-        db      3       ;phm. Physical sector mask,  0 = 128-byte sectors
-                        ;1 = 256-byte sectors, 3 = 512-byte sectors...  +16
-
-; The directory allocation bitmap is interpreted as:
-
-;       al0                     al1
-;       b7b6b5b4b3b2b1b0        b7b6b5b4b3b2b1b0
-;        1 1 1 1 0 0 0 0         0 0 0 0 0 0 0 0
-;               - ie, in this example, the first 4 blocks of the disc 
-;               contain the directory.
-
+bank_05_backup:
+        db      0
+bank_68_backup:
+        db      0
 
 ;=============================================
 ; FID_EMS: Driver Entry Point 
@@ -97,14 +77,9 @@ fid_ems_init:
         rr      l       ; Divide by 4
         ld      ix, $0000
         ld      iy, $0000 
-        ld      b, 2    ; Drive C
+        ld      b, $ff    ; Drive C??
         call    SVC_D_HOOK
         jr      nc, fdl_errors
-        push    ix                      ; Storage for DPB
-        pop     de
-        ld      hl, dpblk
-        ld      bc, 17
-        ldir                            ; Copy DPB to allocated area
         ld      hl, ok_ems_msg
         scf
         ret
@@ -152,9 +127,43 @@ FID_D_LOGON:
         ld      a, 1
         out     (0xfe), a
 
+        push    ix
+        pop     de
+        ld      hl, dpblk
+        ld      bc, dpblk_end - dpblk
+        ldir
+
         xor a
         scf
         ret
+
+;====================
+;DISK PARAMETER BLOCK
+dpblk:
+        dw      36      ;spt. 128byte records per track                 +0
+        db      3       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
+        db      7       ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
+        db      0       ;exm. Extent mask                               +4
+        dw      174     ;dsm. Number of blocks on the disk - 1          +5
+        dw      63      ;drm. Number of directory entries - 1           +7
+        db      $c0     ;al0. Directory allocation bitmap (1st byte)    +9
+        db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
+        dw      $8000   ;Checksum vector size, 0 for a fixed disc
+                        ; No. directory entries/4, rounded up.          +11
+        dw      1       ;off. Number of reserved tracks                 +13
+        db      2       ;psh. Physical sector shift, 0 = 128-byte sectors
+                        ;1 = 256-byte sectors,  2 = 512-byte sectors... +15
+        db      3       ;phm. Physical sector mask,  0 = 128-byte sectors
+                        ;1 = 256-byte sectors, 3 = 512-byte sectors...  +16
+dpblk_end:
+
+; The directory allocation bitmap is interpreted as:
+
+;       al0                     al1
+;       b7b6b5b4b3b2b1b0        b7b6b5b4b3b2b1b0
+;        1 1 1 1 0 0 0 0         0 0 0 0 0 0 0 0
+;               - ie, in this example, the first 4 blocks of the disc 
+;               contain the directory.
 
 ;=============================================
 ; FID_D_READ: Read logical sector
@@ -225,30 +234,36 @@ shift_pos:
         ld      a, h
         and     $f0
         ld      h, a            ; Aligned to 4K boundaries
+        push    hl              ; Save source address in slot 0
 
         di
-        ; Switch to normal mapping mode (We assume we are running in
-        ;       bank 5 from $4000 onwards, as stated in our FID header)
-        ld      a, (SVC_BANK_68)
-        and     $fe            ; Clear special mode banking
-        ld      bc, $1ffd
-        out     (c), a
-
         ; We need page 3 in $C000 to have access to CP/M variables
+        ;    and also where the stack resides
         ld      a, (SVC_BANK_05)
+        ld      (bank_05_backup), a
         and     $f8
         or      3
         ld      bc, $7ffd
+        ld      (SVC_BANK_05), a
         out     (c), a
 
-        push    hl              ; Save source address in slot 0
+        ; Switch to normal mapping mode (We assume running in bank 5 
+        ;       from $4000 onwards, as stated in our FID header)
+        ld      a, (SVC_BANK_68)
+        ld      (bank_68_backup), a
+        and     $fe            ; Clear special mode banking
+        ld      bc, $1ffd
+        ld      (SVC_BANK_68), a
+        out     (c), a
 
         ; Unlock dandanator commands
         push    de
+
         ld      a, 46
         ld      d, 16
         ld      e, 16
         call    sendspcmdlc
+
         pop     de
 
         ; Ask dandanator to map needed slot
@@ -271,11 +286,13 @@ shift_pos:
         call    sendspcmdlc
 
         ; Restore $7ffd value
-        ld      a, (SVC_BANK_05)
+        ld      a, (bank_05_backup)
+        ld      (SVC_BANK_05), a
         out     ($7ffd), a
 
         ; Switch back to allram mode
-        ld      a, (SVC_BANK_68)
+        ld      a, (bank_68_backup)
+        ld      (SVC_BANK_05), a
         out     ($1ffd), a
 
         ei
@@ -397,3 +414,5 @@ ok_ems_msg:
         db      "Dandanator Disk Driver 0.1 succesfully registered", $0d, $0a, $ff
 generic_error_msg:
         db      "Generic message error", $0d, $0a, $ff
+
+
