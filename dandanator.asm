@@ -16,10 +16,10 @@ nrcmdloop0:
         nop
         ld      (hl), a         ; Send Pulse			
         djnz    nrcmdloop0
-        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
+;        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
                                 ; (MUST BE RUN FROM RAM)
-waitxcmd0:
-        djnz    waitxcmd0				
+;waitxcmd0:
+;        djnz    waitxcmd0				
                                 ; Will still take some time to perform actual 
         ld      b,pauseloopsn           ; Drift more than 128us (timeout) and 
                                         ; allow extra time before next command 
@@ -39,10 +39,10 @@ nrcmdloop1:
         nop
         ld      (hl), a         ; Send Pulse			
         djnz    nrcmdloop1
-        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
+;        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
                                 ; (MUST BE RUN FROM RAM)
-waitxcmd1:
-        djnz    waitxcmd1				
+;waitxcmd1:
+;        djnz    waitxcmd1				
                                 ; Will still take some time to perform actual 
         ld      b, pauseloopsn	        ; Drift more than 128us (timeout) and 
                                         ; allow extra time before next command 
@@ -61,10 +61,10 @@ nrcmdloop2:
         nop
         ld      (hl), a         ; Send Pulse			
         djnz    nrcmdloop2
-        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
+;        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
                                 ; (MUST BE RUN FROM RAM)
-waitxcmd2:
-        djnz    waitxcmd2				
+;waitxcmd2:
+;        djnz    waitxcmd2				
                                 ; Will still take some time to perform actual 
         ld      b, pauseloopsn          ; Drift more than 128us (timeout) and 
                                         ; allow extra time before next command 
@@ -80,6 +80,10 @@ drift2:
                                         ;confirmation (any A value for ZESARUX)
         ld      b, 0					
 pauselconf:
+        ex      (sp), hl
+        ex      (sp), hl
+        ex      (sp), hl
+        ex      (sp), hl
         ex      (sp), hl
         ex      (sp), hl
         ex      (sp), hl
