@@ -144,14 +144,10 @@ fid_loader:
         ld      a, 0
         out     (ulaport), a
 
-;        ld      iy, dir_ram_3
 ;        ld      a, (iy+12)
 ;        cp      $ff
 ;        jr      nz, fid_loader2
 fid_loader1:
-        ld      a, (iy + 11)
-        ld      (scb_bios_drv), a    ; Default BIOS drive
-        ld      (scb_ccp_drv), a     ; Default CCP drive
 ;        jr      fid_loader3
 fid_loader2:
         ld      hl, dir_ram_3
@@ -159,6 +155,10 @@ fid_loader2:
         ld      bc, 11
         ldir
         call    fid_install
+        ld      iy, dir_ram_3
+        ld      a, (iy + 11)
+        ld      (scb_bios_drv), a    ; Default BIOS drive
+        ld      (scb_ccp_drv), a     ; Default CCP drive
 fid_loader3:
         ld      a, 3                 ; Search for FID in C
         ld      (fid_mask), a
