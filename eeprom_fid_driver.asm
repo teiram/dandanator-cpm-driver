@@ -69,12 +69,10 @@ fid_ems_init:
         ld      de, FID_JUMP_BLOCK 
         ld      hl, (dpblk + 5)
         inc     hl                      ; Block count
-        ; 2 times block count divided by 8
+        ; 4 times block count (two maps * 512 byte blocks) divided by 8
         ; Bytes for a double bit allocation table
         srl     h
         rr      l       ; Divide by 2
-        srl     h
-        rr      l       ; Divide by 4
         ld      ix, $0000
         ld      iy, $0000 
         ld      b, $ff    ; Drive C??
@@ -201,13 +199,20 @@ FID_D_READ:
                                 ; that each track has 9 sectors
                                 ; 512 bytes each
         push    hl
-        pop     bc
+        pop     bc              ; BC holds now the track number
         and     a               ; Clear Carry
 
+                                ; Multiply track number by 9
+                                ; Multiplying by 8 and self adding on HL
         sla     c
-        sla     c
+        rl      b               ; By 2
+        and     a
         sla     c               
-        add     hl, bc          ; hl contains track * 9
+        rl      b               ; By 4
+        and     a
+        sla     c               
+        rl      b               ; By 8
+        add     hl, bc          ; hl contains track + track * 8 = track * 9
         add     hl, de          ; hl contains track * 9 + sector
 
 
@@ -221,22 +226,26 @@ shift_slot:
         rr      e
         djnz    shift_slot      ; e holds the slot offset (>> 5)
 
+        ld      h, 0
+        ld      a, l
+        and     $1f             ; The 5 lower bits in hl give the sector offset
+        ld      l, a
         ld      b, 9
 shift_pos:
         sla     l
         rl      h
-        djnz    shift_pos       ; hl holds the byte offset
+        djnz    shift_pos       ; hl holds now the slot offset in bytes
 
         push    hl              ; We need it later to calculate the offset in 
                                 ; buffer area
-
-        ld      l, 0
         ld      a, h
-        and     $f0
-        ld      h, a            ; Aligned to 4K boundaries
+        and     $f0             
+        ld      h, a            ; 4K boundaries
+
         push    hl              ; Save source address in slot 0
 
         di
+
         ; We need page 3 in $C000 to have access to CP/M variables
         ;    and also where the stack resides
         ld      a, (SVC_BANK_05)
