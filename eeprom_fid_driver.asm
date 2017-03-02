@@ -275,6 +275,13 @@ shift_pos:
 
         pop     de
 
+	; Workaround to enable ROM
+	ld 	a, 1
+	ld	(1), a
+	ld	b, 64
+sync_ddntr:
+	djnz	sync_ddntr
+
         ; Ask dandanator to map needed slot
         ld      a, e
         add     a, 3 + 1        ; Add disk slot offset (plus command shift)
