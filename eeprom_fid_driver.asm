@@ -28,6 +28,8 @@ db      0,0,0,0,0,0,0,0,0,0,0,0 ;Reserved
 ; Data buffer
 buffer_addr:
         dw      0
+buffer_state:
+	db	0		; Dirty status of the buffer
 cached_block:
 	db	$ff		; EEPROM has 128 4K blocks
 				; 8 bits are enough to hold this value
@@ -52,7 +54,6 @@ bank_68_backup:
 ;               Other flags A BC DE IX IY corrupt
 ;               All other registers preserved
 FID_EMS:
-	 debug_border_colour 0
 
 ;        So far I don't think we need this
 ;        ld      a, (SCB_BIOS_DRV)
@@ -83,7 +84,6 @@ fid_ems_init:
         call    SVC_D_HOOK
         jr      nc, fdl_errors
         ld      hl, ok_ems_msg
-	debug_restore_border
         scf
         ret
 fdl_errors:
@@ -127,7 +127,6 @@ FID_JUMP_BLOCK:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_LOGON:
-	debug_border_colour 0
 
         push    ix
         pop     de
@@ -135,7 +134,6 @@ FID_D_LOGON:
         ld      bc, dpblk_end - dpblk
         ldir
 
-	debug_restore_border
 
         xor a
         scf
@@ -198,8 +196,136 @@ dpblk_end:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_READ:
-	debug_border_colour 	4
+	call	fetch_block
+	jr	nc, error_fetch
 
+        ; Calculate block offset in buffer_addr
+        ld      hl, (buffer_addr)
+        ld      a, d
+        and     $0f     ; Offset in the 4K buffer
+        ld      d, a
+        add     hl, de
+
+        push    iy      ; IY holds the transfer buffer address
+        pop     de
+        ld      bc, 512
+        ldir
+
+        ld      a, 0
+        scf             ; Set carry (success)
+error_fetch:
+	ret 
+
+;=============================================
+; FID_D_WRITE: Write logical sector
+;=============================================
+;Write a 512 byte sector.
+;Entry conditions:
+;       B = drive
+;       C = deblocking code
+;               0 => deferred write
+;               1 => non-deferred write
+;               2 => deferred write to first sector in block
+;       DE = logical sector
+;       HL = logical track
+;       IX = address of DPB
+;       IY = address of source
+;Exit conditions:
+;       If carry true then OK
+;               A = return code
+;               $00 => OK
+;               B corrupt
+;       If carry false and zero true then error but no retry
+;               A = CP/M return code
+;               $01 => non-recoverable error condition
+;               $02 => disc is read-only
+;               $FF => media changed
+;               B corrupt
+;       If carry false and zero false then error; ask user, retry if requested
+;               A = CP/M return code
+;               $01 => non-recoverable error condition
+;               $02 => disc is read-only
+;               $FF => media changed
+;               B = message number
+;       Always
+;               C DE HL IX IY corrupt
+;               All other registers preserved
+FID_D_WRITE:
+	call	fetch_block	; Get the block to modify
+
+        ; Calculate block offset in buffer_addr
+	ld	hl, (buffer_addr)
+	ld	a, d
+	and	$0f		; Offset in the 4K buffer
+	ld	d, a
+	add	hl, de
+	push	iy
+	pop	de
+	ex	de, hl
+	ld	bc, 512
+	ldir
+	ld	a, 1
+	ld	(buffer_state), a	; Mark the buffer as dirty
+
+	xor	a
+        scf
+        ret
+
+;=============================================
+; FID_D_FLUSH: Flush buffers
+;=============================================
+;Entry conditions:
+;       B = drive
+;       IX = address of DPB
+;Exit conditions:
+;       If carry true then OK
+;               A = return code
+;               $00 => OK
+;               B corrupt
+FID_D_FLUSH:
+	call	save_current_block
+        scf
+        xor a
+        ret
+
+;=============================================
+; FID_D_MESS: Driver messages
+;=============================================
+;Return a message string in the language of the country specified to FID_EMS.
+;
+;Entry conditions:
+;
+;       B = message number (as returned by the other FID_D_ routines)
+;       IX = address of DPB
+;Exit conditions:
+;       If carry true then message text is available
+;               HL = address of message terminated by #FF
+;       If carry false then error, no message
+;               HL corrupt
+;       Always
+;               Other flags A BC DE corrupt
+FID_D_MESS:
+
+        ld      hl, generic_error_msg
+        scf
+        ret
+
+;===============================================================================
+; Fetches a block from the EEPROM
+; Useful for either read or write routines
+; Entry conditions:
+;   B = drive
+;   DE = logical sector
+;   HL = logical track
+;   IX = address of DPB
+;   IY = address of destination
+; Output status:
+;   DE = block offset
+;   Carry OK to denote success
+;   No errors are possible so far
+;   All registers corrupted (but alternate ones)
+;===============================================================================
+fetch_block:
                                 ; Calculate track offset, assuming
                                 ; that each track has 9 sectors
                                 ; 512 bytes each
@@ -237,26 +363,25 @@ shift_pos:
                                 ; buffer area
 
 	ld	a, (cached_block)
-	cp	$ff
-	jr	z, nocached
-
 	ld	b, 3		; Shift 3 positions to go from 512b to 4K
 shift_to_block:
 	srl	h
 	rr	l
-	djnz	shift_to_block	; L holds now the eeprom 4k block
+	djnz	shift_to_block		; L holds now the eeprom 4k block
 	cp	l
 	jp	z, cached
-	ld	b, 2		; Enter the shift_to_slot with 2 to
-				; compensate the shift already made here
-	jr	shift_to_slot
-
-nocached:
-	ld 	(cached_block), a	; Mark as cached, since there's no
+	ld	a, l
+	ld	(cached_block), a	; Mark as cached, since there's no
 					; chance of controlled failure from 
 					; now on
-        ld      b, 5			; Shift 2 or 5 positions depending
-					; on the cache algorithm before
+
+nocached:
+	call	save_current_block	; Save the current block if dirty
+
+	debug_border_colour 4
+
+        ld      b, 2			; Shift 2 more positions to get the
+					; slot (16K)
 shift_to_slot:        
         srl     h
         rr      l
@@ -319,6 +444,11 @@ sync_ddntr:
         ld      bc, 4096
         ldir                    ; Copy 4K from mapped EEPROM to buffer_addr
 
+	xor 	a
+	ld	(buffer_state), a 	; Set the buffer as clean
+
+
+
         ; Switch to internal ROM and block commands afterwards
         ld      a, 40           ; Command 40
         ld      d, 33           ; Slot 33 (Internal rom)
@@ -338,110 +468,52 @@ sync_ddntr:
         ei
 
 cached:
-        ; Calculate block offset in buffer_addr
-        ld      hl, (buffer_addr)
-        pop     de
-        ld      a, d
-        and     $0f     ; Offset in the 4K buffer
-        ld      d, a
-        add     hl, de
-
-        push    iy      ; IY holds the transfer buffer address
-        pop     de
-
-        ld      bc, 512
-        ldir
-
-        ;DEBUG
-	debug_restore_border
-
+	pop 	de	; Return in DE the block offset
         ld      a, 0
+	debug_restore_border
         scf             ; Set carry (success)
         ret
 
-;=============================================
-; FID_D_WRITE: Write logical sector
-;=============================================
-;Write a 512 byte sector.
-;Entry conditions:
-;       B = drive
-;       C = deblocking code
-;               0 => deferred write
-;               1 => non-deferred write
-;               2 => deferred write to first sector in block
-;       DE = logical sector
-;       HL = logical track
-;       IX = address of DPB
-;       IY = address of source
-;Exit conditions:
-;       If carry true then OK
-;               A = return code
-;               $00 => OK
-;               B corrupt
-;       If carry false and zero true then error but no retry
-;               A = CP/M return code
-;               $01 => non-recoverable error condition
-;               $02 => disc is read-only
-;               $FF => media changed
-;               B corrupt
-;       If carry false and zero false then error; ask user, retry if requested
-;               A = CP/M return code
-;               $01 => non-recoverable error condition
-;               $02 => disc is read-only
-;               $FF => media changed
-;               B = message number
-;       Always
-;               C DE HL IX IY corrupt
-;               All other registers preserved
-FID_D_WRITE:
-	debug_border_colour 5
+;===============================================================================
+; Saves the currently buffered block to eeprom in case its state is dirty
+; Entry conditions:
+;  None
+; Output status:
+;   Carry OK to denote success
+;   AF, DE, BC, HL preserved
+;===============================================================================
+save_current_block:
+	push	af
+	push	bc
+	push	de
+	push	hl
 
+	ld	a, (buffer_state)	; Check buffer status
+	cp	$1			; 1 means dirty
+	jr	nz, nosave_required
+
+	ld	a, (cached_block)	; Check if we have something cached
+	cp	$ff
+	jr	z, nosave_required
+
+	debug_border_colour 2
+	add	a, 12			; Offset of reserved SST blocks (4 * 3)
+	push	af
+	call	dan_sst_sector_erase
+	pop	af
+	ld	hl, (buffer_addr)
+	call	dan_sst_sector_program
+
+	ld	a, 0
+	ld	(buffer_state), a
 	debug_restore_border
-
-        scf
-        ret
-
-;=============================================
-; FID_D_FLUSH: Flush buffers
-;=============================================
-;Entry conditions:
-;       B = drive
-;       IX = address of DPB
-;Exit conditions:
-;       If carry true then OK
-;               A = return code
-;               $00 => OK
-;               B corrupt
-FID_D_FLUSH:
-	debug_border_colour 6
-	debug_restore_border
-        scf
-        xor a
-        ret
-
-;=============================================
-; FID_D_MESS: Driver messages
-;=============================================
-;Return a message string in the language of the country specified to FID_EMS.
-;
-;Entry conditions:
-;
-;       B = message number (as returned by the other FID_D_ routines)
-;       IX = address of DPB
-;Exit conditions:
-;       If carry true then message text is available
-;               HL = address of message terminated by #FF
-;       If carry false then error, no message
-;               HL corrupt
-;       Always
-;               Other flags A BC DE corrupt
-FID_D_MESS:
-	debug_border_colour 7
-
-	debug_restore_border
-        ld      hl, generic_error_msg
-        scf
-        ret
+nosave_required:
+	pop	hl
+	pop	de
+	pop	bc
+	pop	af
+	scf
+	ret
 
 include dandanator_api.asm
 
