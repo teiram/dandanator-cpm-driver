@@ -52,7 +52,7 @@ se_step6:
 	ld 	a, $30		; actual sector erase		
 	ld 	(hl), a
 	
-	ld bc,	1400		; wait over 25 ms for sector erase to complete 
+	ld 	bc, 1400	; wait over 25 ms for sector erase to complete 
 				; (datasheet pag 13) -> 1400*18us= 25,2 ms
 waitsec:			; loop ts = 64ts -> aprox 18us on 128k machines
 	ex 	(sp),hl		; 19ts
@@ -78,9 +78,9 @@ waitsec:			; loop ts = 64ts -> aprox 18us on 128k machines
 dan_sst_sector_program:
 	push 	hl		; save ram address
 	push 	af		; save sector number
-	ld 	e,a		; put pic in sector program mode
-	ld 	a,48		; special command 48, external eeprom operations
-	ld 	d,32		; 32, sector program
+	ld 	e, a		; put pic in sector program mode
+	ld 	a, 48		; special command 48, external eeprom operations
+	ld 	d, 32		; 32, sector program
 	call 	dan_special_command
 	call 	dan_confirmation_pulse
 	pop 	af		; get sector number back in a
