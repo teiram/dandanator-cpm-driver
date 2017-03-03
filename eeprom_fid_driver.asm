@@ -28,6 +28,9 @@ db      0,0,0,0,0,0,0,0,0,0,0,0 ;Reserved
 ; Data buffer
 buffer_addr:
         dw      0
+cached_block:
+	db	$ff		; EEPROM has 128 4K blocks
+				; 8 bits are enough to hold this value
 bank_05_backup:
         db      0
 bank_68_backup:
@@ -216,35 +219,48 @@ FID_D_READ:
         rl      b               ; By 8
         add     hl, bc          ; hl contains track + track * 8 = track * 9
         add     hl, de          ; hl contains track * 9 + sector
+	push	hl
+	pop	de
 
+	ld	d, 0
+	ld	a, e
+	and	$1f
+	ld	e, a		; 5 lower bits for sector offset
 
-        push    hl              ; hl will hold the byte offset (aligned to 4k)
-        pop     de              ; de will hold the slot offset 
-
-
-        ld      b, 5
-shift_slot:        
-        srl     d
-        rr      e
-        djnz    shift_slot      ; e holds the slot offset (>> 5)
-
-        ld      h, 0
-        ld      a, l
-        and     $1f             ; The 5 lower bits in hl give the sector offset
-        ld      l, a
-        ld      b, 9
+        ld      b, 9		; Calculate requested block offset
 shift_pos:
-        sla     l
-        rl      h
-        djnz    shift_pos       ; hl holds now the slot offset in bytes
+        sla     e
+        rl      d
+        djnz    shift_pos       ; de holds now the slot offset in bytes
 
-        push    hl              ; We need it later to calculate the offset in 
+        push    de              ; We need it later to calculate the offset in 
                                 ; buffer area
-        ld      a, h
-        and     $f0             
-        ld      h, a            ; 4K boundaries
 
-        push    hl              ; Save source address in slot 0
+	ld	a, (cached_block)
+	cp	$ff
+	jr	z, nocached
+
+	ld	b, 3		; Shift 3 positions to go from 512b to 4K
+shift_to_block:
+	srl	h
+	rr	l
+	djnz	shift_to_block	; L holds now the eeprom 4k block
+	cp	l
+	jp	z, cached
+	ld	b, 2		; Enter the shift_to_slot with 2 to
+				; compensate the shift already made here
+	jr	shift_to_slot
+
+nocached:
+	ld 	(cached_block), a	; Mark as cached, since there's no
+					; chance of controlled failure from 
+					; now on
+        ld      b, 5			; Shift 2 or 5 positions depending
+					; on the cache algorithm before
+shift_to_slot:        
+        srl     h
+        rr      l
+        djnz    shift_to_slot      	; l holds the slot offset
 
         di
 
@@ -268,14 +284,14 @@ shift_pos:
         out     (c), a
 
         ; Unlock dandanator commands
-        push    de
+        push    hl
 
         ld      a, 46
         ld      d, 16
         ld      e, 16
         call    dan_special_command_with_confirmation
 
-        pop     de
+        pop     hl
 
 	; Workaround to enable ROM
 	ld 	a, 1
@@ -285,14 +301,20 @@ sync_ddntr:
 	djnz	sync_ddntr
 
         ; Ask dandanator to map needed slot
-        ld      a, e
+        ld      a, l
         add     a, 3 + 1        ; Add disk slot offset (plus command shift)
         ld      d, a            ; Slot 
         ld      a, 40           ; Command 40
         ld      e, 0            ; No further actions
         call    dan_special_command_with_confirmation
 
-        pop     hl
+        pop     hl		; block offset (512 bytes)
+	push	hl
+        ld      a, h
+        and     $f0             
+        ld      h, a            ; 4K boundaries
+	ld	l, 0
+
         ld      de, (buffer_addr)
         ld      bc, 4096
         ldir                    ; Copy 4K from mapped EEPROM to buffer_addr
@@ -315,6 +337,7 @@ sync_ddntr:
 
         ei
 
+cached:
         ; Calculate block offset in buffer_addr
         ld      hl, (buffer_addr)
         pop     de
