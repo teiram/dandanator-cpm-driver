@@ -1,4 +1,4 @@
-DEBUG			EQU 	1
+DEBUG			EQU 	0
 include 	debug_macros.asm
 SVC_BANK_05             EQU     $ + 0FE00h      ;Last value written to $7ffd
 SVC_BANK_68             EQU     $ + 0FE01h      ;Last value written to $1ffd
@@ -33,11 +33,6 @@ buffer_state:
 cached_block:
 	db	$ff		; EEPROM has 128 4K blocks
 				; 8 bits are enough to hold this value
-bank_05_backup:
-        db      0
-bank_68_backup:
-        db      0
-
 ;=============================================
 ; FID_EMS: Driver Entry Point 
 ;=============================================
@@ -392,20 +387,16 @@ shift_to_slot:
         ; We need page 3 in $C000 to have access to CP/M variables
         ;    and also where the stack resides
         ld      a, (SVC_BANK_05)
-        ld      (bank_05_backup), a
         and     $f8
         or      3
         ld      bc, $7ffd
-        ld      (SVC_BANK_05), a
         out     (c), a
 
         ; Switch to normal mapping mode (We assume running in bank 5 
         ;       from $4000 onwards, as stated in our FID header)
         ld      a, (SVC_BANK_68)
-        ld      (bank_68_backup), a
         and     $fe            ; Clear special mode banking
         ld      bc, $1ffd
-        ld      (SVC_BANK_68), a
         out     (c), a
 
         ; Unlock dandanator commands
@@ -447,23 +438,21 @@ sync_ddntr:
 	xor 	a
 	ld	(buffer_state), a 	; Set the buffer as clean
 
-
-
         ; Switch to internal ROM and block commands afterwards
         ld      a, 40           ; Command 40
         ld      d, 33           ; Slot 33 (Internal rom)
         ld      e, 4            ; Block commands afterwards
         call    dan_special_command_with_confirmation
 
-        ; Restore $7ffd value
-        ld      a, (bank_05_backup)
-        ld      (SVC_BANK_05), a
-        out     ($7ffd), a
-
         ; Switch back to allram mode
-        ld      a, (bank_68_backup)
-        ld      (SVC_BANK_05), a
-        out     ($1ffd), a
+        ld      a, (SVC_BANK_68)
+	ld	bc, $1ffd
+        out     (c), a
+
+        ; Restore $7ffd value
+        ld      a, (SVC_BANK_05)
+	ld	bc, $7ffd
+        out     (c), a
 
         ei
 
@@ -483,10 +472,11 @@ cached:
 ;   AF, DE, BC, HL preserved
 ;===============================================================================
 save_current_block:
+
 	push	af
-	push	bc
+	push 	bc
 	push	de
-	push	hl
+	push 	hl
 
 	ld	a, (buffer_state)	; Check buffer status
 	cp	$1			; 1 means dirty
@@ -496,22 +486,67 @@ save_current_block:
 	cp	$ff
 	jr	z, nosave_required
 
-	debug_border_colour 2
-	add	a, 12			; Offset of reserved SST blocks (4 * 3)
-	push	af
-	call	dan_sst_sector_erase
-	pop	af
-	ld	hl, (buffer_addr)
-	call	dan_sst_sector_program
+        di
+
+        ; We need page 3 in $C000 where the stack resides
+        ld      a, (SVC_BANK_05)
+        and     $f8
+        or      3
+        ld      bc, $7ffd
+        out     (c), a
+
+        ; Switch to normal mapping mode (needed by sst routines)
+        ld      a, (SVC_BANK_68)
+        and     $fe            		; Clear special mode banking
+        ld      bc, $1ffd
+        out     (c), a
+
+        ld      a, 46
+        ld      d, 16
+        ld      e, 16
+        call    dan_special_command_with_confirmation
+
+	; Workaround to enable ROM
+	ld 	a, 1
+	ld	(1), a
+	ld	b, 64
+sync_ddntr1:
+	djnz	sync_ddntr1
+
+	;ld	a, (cached_block)
+	;add	a, 12			; Offset of reserved SST blocks (4 * 3)
+	;call	dan_sst_sector_erase
+
+	;ld	a, (cached_block)
+	;add	a, 12
+	;ld	hl, (buffer_addr)
+	;call	dan_sst_sector_program
+
+        ; Switch to internal ROM and block commands afterwards
+        ld      a, 40           ; Command 40
+        ld      d, 33           ; Slot 33 (Internal rom)
+        ld      e, 4            ; Block commands afterwards
+        call    dan_special_command_with_confirmation
+
+        ; Switch back to allram mode
+        ld      a, (SVC_BANK_68)
+	ld	bc, $1ffd
+        out     (c), a
+
+        ; Restore $7ffd value
+        ld      a, (SVC_BANK_05)
+	ld	bc, $7ffd
+        out     (c), a
+
+        ei
 
 	ld	a, 0
 	ld	(buffer_state), a
-	debug_restore_border
 nosave_required:
 	pop	hl
 	pop	de
 	pop	bc
-	pop	af
+	pop 	af
 	scf
 	ret
 
