@@ -7,7 +7,7 @@ ddntr_eeprom.bin :  eeprom_fid_driver.bin $(DDNTR_SOURCES)
 ddntr.rom : ddntr_eeprom.bin disk.raw
 	@cat ddntr_eeprom.bin disk.raw /dev/zero | dd of=ddntr.rom bs=16384 count=32
 
-eeprom_fid_driver.bin : eeprom_fid_driver.asm dandanator_api.asm
+eeprom_fid_driver.bin : eeprom_fid_driver.asm dandanator_api.asm debug_macros.asm
 	pasmo --prl eeprom_fid_driver.asm $@
 
 .PHONY : clean all

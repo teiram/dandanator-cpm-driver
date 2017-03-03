@@ -1,3 +1,5 @@
+DEBUG			EQU 	1
+include 	debug_macros.asm
 SVC_BANK_05             EQU     $ + 0FE00h      ;Last value written to $7ffd
 SVC_BANK_68             EQU     $ + 0FE01h      ;Last value written to $1ffd
 SVC_SCB                 EQU     $ + 0FE03H      ; SCB Address
@@ -47,8 +49,7 @@ bank_68_backup:
 ;               Other flags A BC DE IX IY corrupt
 ;               All other registers preserved
 FID_EMS:
-        ld      a, 2
-        out     (0xfe), a
+	 debug_border_colour 0
 
 ;        So far I don't think we need this
 ;        ld      a, (SCB_BIOS_DRV)
@@ -72,13 +73,14 @@ fid_ems_init:
         ; 4 times block count (two maps * 512 byte blocks) divided by 8
         ; Bytes for a double bit allocation table
         srl     h
-        rr      l       ; Divide by 2
+        rr      l       		; Divide by 2
         ld      ix, $0000
         ld      iy, $0000 
-        ld      b, $ff    ; Drive C??
+        ld      b, $ff    		; First available drive unit
         call    SVC_D_HOOK
         jr      nc, fdl_errors
         ld      hl, ok_ems_msg
+	debug_restore_border
         scf
         ret
 fdl_errors:
@@ -122,14 +124,15 @@ FID_JUMP_BLOCK:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_LOGON:
-        ld      a, 1
-        out     (0xfe), a
+	debug_border_colour 0
 
         push    ix
         pop     de
         ld      hl, dpblk
         ld      bc, dpblk_end - dpblk
         ldir
+
+	debug_restore_border
 
         xor a
         scf
@@ -192,8 +195,7 @@ dpblk_end:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_READ:
-        ld      a, 4
-        out     (0xfe), a
+	debug_border_colour 	4
 
                                 ; Calculate track offset, assuming
                                 ; that each track has 9 sectors
@@ -328,8 +330,7 @@ sync_ddntr:
         ldir
 
         ;DEBUG
-        ld      a, 0
-        out     (0xfe), a
+	debug_restore_border
 
         ld      a, 0
         scf             ; Set carry (success)
@@ -370,9 +371,10 @@ sync_ddntr:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_WRITE:
-        ld      a, 5
-        out     (0xfe), a
-        sub     a
+	debug_border_colour 5
+
+	debug_restore_border
+
         scf
         ret
 
@@ -388,8 +390,8 @@ FID_D_WRITE:
 ;               $00 => OK
 ;               B corrupt
 FID_D_FLUSH:
-        ld      a, 6
-        out     (0xfe), a
+	debug_border_colour 6
+	debug_restore_border
         scf
         xor a
         ret
@@ -411,9 +413,9 @@ FID_D_FLUSH:
 ;       Always
 ;               Other flags A BC DE corrupt
 FID_D_MESS:
-        ld      a, 6
-        out     (0xfe), a
+	debug_border_colour 7
 
+	debug_restore_border
         ld      hl, generic_error_msg
         scf
         ret
