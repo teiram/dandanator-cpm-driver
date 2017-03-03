@@ -1,7 +1,3 @@
-        ;;DEBUG
-        ld      a, 2
-        out     (ulaport), a
-
         ; Initialize 1ffd/7ffd saved values
         ld      ix, variable_zone
         ld      (ix + value_7ffd_offset), default_7ffd_value 
@@ -76,10 +72,6 @@ plus3:
         ld      e, 4            ; Block commands afterwards
         call relocation_area + ddntr_command
 
-        ;; DEBUG
-        ld      a, 3
-        out     (ulaport), a
-
         ; Select shadow screen
         ld      a, (variable_zone + value_7ffd_offset)
         or      8
@@ -92,17 +84,10 @@ plus3:
         ld      bc, 0x1ffd
         out     (c), a
         
-        ;; DEBUG
-        ld      a, 5
-        out     (ulaport), a
-
         ld      hl, relocation_area + cpm_patcher_offset
         ld      de, 0x9c40
         ld      bc, cpm_patcher_end - cpm_patcher
         ldir
-
-        ld      a, 6
-        out     (ulaport), a
 
         jp      0x9c40
         
@@ -128,10 +113,6 @@ cpm_patcher:
         ld      hl, fid_setup
         ld      (ems_patch), hl
 
-        ;; DEBUG
-        ld      a, 7
-        out     (ulaport), a
-
         im      1
         di
         jp      0
@@ -140,10 +121,6 @@ cpm_patcher_end:
 dir_ram_3       equ fid_name - fid_loader + $1000
 
 fid_loader:
-        ;;DEBUG
-        ld      a, 0
-        out     (ulaport), a
-
 ;        ld      a, (iy+12)
 ;        cp      $ff
 ;        jr      nz, fid_loader2
