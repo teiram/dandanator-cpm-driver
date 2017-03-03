@@ -271,7 +271,7 @@ shift_pos:
         ld      a, 46
         ld      d, 16
         ld      e, 16
-        call    sendspcmdlc
+        call    dan_special_command_with_confirmation
 
         pop     de
 
@@ -288,7 +288,7 @@ sync_ddntr:
         ld      d, a            ; Slot 
         ld      a, 40           ; Command 40
         ld      e, 0            ; No further actions
-        call    sendspcmdlc   
+        call    dan_special_command_with_confirmation
 
         pop     hl
         ld      de, (buffer_addr)
@@ -299,7 +299,7 @@ sync_ddntr:
         ld      a, 40           ; Command 40
         ld      d, 33           ; Slot 33 (Internal rom)
         ld      e, 4            ; Block commands afterwards
-        call    sendspcmdlc
+        call    dan_special_command_with_confirmation
 
         ; Restore $7ffd value
         ld      a, (bank_05_backup)
@@ -418,7 +418,7 @@ FID_D_MESS:
         scf
         ret
 
-include dandanator.asm
+include dandanator_api.asm
 
 nomem_error_msg:
         db      "No enough free memory", $0d, $0a, $ff

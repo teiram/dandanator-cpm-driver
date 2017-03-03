@@ -17,9 +17,7 @@ org 0
 
 relocated_area_start:
 include cpm_loader.asm
-; Assumed that dandanator.asm starts with the command entry point
-ddntr_command   equ $ - relocated_area_start
-include dandanator.asm
+include dandanator_reloc.asm
 relocated_area_end:
 
 org 0x1000

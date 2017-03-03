@@ -4,6 +4,7 @@ ddntraddrdat1           equ     2
 ddntraddrdat2           equ     3
 pauseloopsn             equ     50
 
+ddntr_command   equ $ - relocated_area_start
 ;Send special command with long confirmation
 sendspcmdlc: 
         ld      hl, ddntraddrcmd        ; HL=0 Command (ZESARUX)
