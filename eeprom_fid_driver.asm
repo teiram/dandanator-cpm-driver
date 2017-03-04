@@ -400,11 +400,11 @@ shift_to_slot:
         ld      bc, $1ffd
         out     (c), a
 
-	ld	bc, $0100
+;	ld	bc, $0100
 sync_allram_exit_pause:
-	djnz	sync_allram_exit_pause
-	dec	c
-	jr	nz, sync_allram_exit_pause
+;	djnz	sync_allram_exit_pause
+;	dec	c
+;	jr	nz, sync_allram_exit_pause
 
         ; Unlock dandanator commands
         push    hl
@@ -448,15 +448,16 @@ sync_allram_exit_pause:
         out     (c), a
 
         ; Restore $7ffd value
-        ld      a, (SVC_BANK_05)
-	ld	bc, $7ffd
-        out     (c), a
+;        ld      a, (SVC_BANK_05)
+;	ld	bc, $7ffd
+;        out     (c), a
 
-	ld	bc, $0100
-sync_allram_enter_pause:
-	djnz	sync_allram_enter_pause
-	dec	c
-	jr	nz, sync_allram_enter_pause
+;	Switching normal/special mode should be immediate
+;	ld	bc, $0100
+;sync_allram_enter_pause:
+;	djnz	sync_allram_enter_pause
+;	dec	c
+;	jr	nz, sync_allram_enter_pause
 
         ei
 
