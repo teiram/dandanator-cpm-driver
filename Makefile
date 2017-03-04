@@ -14,6 +14,6 @@ eeprom_fid_driver.bin : eeprom_fid_driver.asm dandanator_api.asm debug_macros.as
 clean: 
 	@rm -f *.bin *.zip ddntr.rom
 
-zip:
-	@zip -9 "ddntr.rom.`date "+%Y%m%d%H%M%S"`.zip" ddntr.rom  
+zip:	ddntr.rom
+	@zip -9 "ddntr-cpm-`date "+%Y%m%d%H%M%S"`.zip" ddntr.rom  
 
