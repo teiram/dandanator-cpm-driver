@@ -1,6 +1,7 @@
 include constants.asm
 
-org 0
+	org 0
+	
         di
         ld sp, stack_ptr
 
@@ -28,4 +29,4 @@ fid_driver_end:
 org 0x4000
 incbin S10CPM3.EMS
 
-ds 0xc000 - $
+ds 0x10000 - $
