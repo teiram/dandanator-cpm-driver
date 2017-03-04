@@ -24,7 +24,7 @@ dan_sst_sector_erase:
 	ld 	a, 48		; special command 48, external eeprom operations			
 	ld 	d, 16		; 16, sector erase (sectorn contained in e)
 	call 	dan_special_command
-	call 	dan_confirmation_pulse	
+	call 	dan_confirmation_pulse
 	
 	pop 	hl		; get sector address back (pushed from hl)
 	
@@ -60,7 +60,7 @@ waitsec:			; loop ts = 64ts -> aprox 18us on 128k machines
 	dec 	bc		; 6ts
 	ld 	a, b		; 4ts
 	or 	c		; 4ts
-	jr nz, waitsec		; 12ts / 7ts
+	jr 	nz, waitsec	; 12ts / 7ts
 
 	ret			; 10ts
 ; ------------------------------------------------------------------------------
@@ -208,8 +208,11 @@ drift2:
 dan_normal_command:	
 	ld 	b, a	
 nrcmdloop:	
-	ex 	(sp), hl		; some time to avoid very fast pulses
-	ex 	(sp), hl	
+;	ex 	(sp), hl		; some time to avoid very fast pulses
+;	ex 	(sp), hl	
+	nop
+	nop
+	nop
 	ld 	(hl), a			; send pulse			
 	djnz 	nrcmdloop
 	ld 	b, 128			; uncomment for full normalcommand 
