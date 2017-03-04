@@ -92,6 +92,24 @@ pauselconf:
         djnz    pauselconf
         ret
 
+; normal command
+ddntr_normal_command   equ $ - relocated_area_start
+dan_normal_cmd:      
+	ld 	b, a
+normal_cmd_loop:      
+	nop			; 5 nops = 11,2 us 48k 3 nops = 8,9us 48k, 
+				; 2 nops = 7,75us 48k/7,625us 128k 
+				;(1 nop not working)
+	nop
+	nop
+	ld 	(hl), a		; Send Pulse                    
+	djnz normal_cmd_loop
+        ld 	b, 64 
+normal_exit_loop:
+	djnz normal_exit_loop                           
+	ret
+	
+	     
 ; initeepvars - Init PIC Eeprom Vars for boot options and Button Behaviour	
 
 initeepvars:
