@@ -1,5 +1,5 @@
 DEBUG			EQU 	0
-include 	debug_macros.asm
+include 		debug_macros.asm
 SVC_BANK_05             EQU     $ + 0FE00h      ;Last value written to $7ffd
 SVC_BANK_68             EQU     $ + 0FE01h      ;Last value written to $1ffd
 SVC_SCB                 EQU     $ + 0FE03H      ; SCB Address
@@ -51,6 +51,7 @@ cached_block:
 FID_EMS:
 
 ;        So far I don't think we need this
+;	 since we will be allocating our driver always
 ;        ld      a, (SCB_BIOS_DRV)
 ;        and     0xff
 ;        jr      z, fid_ems_allocate
@@ -321,9 +322,9 @@ FID_D_MESS:
 ;   All registers corrupted (but alternate ones)
 ;===============================================================================
 fetch_block:
-                                ; Calculate track offset, assuming
-                                ; that each track has 9 sectors
-                                ; 512 bytes each
+	; Calculate track offset, assuming
+	; that each track has 9 sectors
+	; 512 bytes each
         push    hl
         pop     bc              ; BC holds now the track number
         and     a               ; Clear Carry
@@ -381,7 +382,7 @@ shift_to_slot:
         srl     h
         rr      l
         djnz    shift_to_slot      	; l holds the slot offset
-
+					; 8 bits are enough (h must be zero)
         di
 
         ; We need page 3 in $C000 to have access to CP/M variables
@@ -399,6 +400,10 @@ shift_to_slot:
         ld      bc, $1ffd
         out     (c), a
 
+	ld	b, 0
+sync_allram_exit_pause:
+	djnz	sync_allram_exit_pause
+
         ; Unlock dandanator commands
         push    hl
 
@@ -409,20 +414,11 @@ shift_to_slot:
 
         pop     hl
 
-	; Workaround to enable ROM
-	ld 	a, 1
-	ld	(1), a
-	ld	b, 64
-sync_ddntr:
-	djnz	sync_ddntr
-
         ; Ask dandanator to map needed slot
         ld      a, l
         add     a, 3 + 1        ; Add disk slot offset (plus command shift)
-        ld      d, a            ; Slot 
-        ld      a, 40           ; Command 40
-        ld      e, 0            ; No further actions
-        call    dan_special_command_with_confirmation
+	ld	hl, 1
+        call    dan_normal_command
 
         pop     hl		; block offset (512 bytes)
 	push	hl
@@ -453,6 +449,10 @@ sync_ddntr:
         ld      a, (SVC_BANK_05)
 	ld	bc, $7ffd
         out     (c), a
+
+	ld	b, 0
+sync_allram_enter_pause:
+	djnz	sync_allram_enter_pause
 
         ei
 
@@ -506,21 +506,19 @@ save_current_block:
         ld      e, 16
         call    dan_special_command_with_confirmation
 
-	; Workaround to enable ROM
-	ld 	a, 1
-	ld	(1), a
-	ld	b, 64
-sync_ddntr1:
-	djnz	sync_ddntr1
+        ; Ask dandanator to map first disk slot
+        ld      a, 3 + 1
+	ld	hl, 1
+        call    dan_normal_command
 
-	;ld	a, (cached_block)
-	;add	a, 12			; Offset of reserved SST blocks (4 * 3)
-	;call	dan_sst_sector_erase
+	ld	a, (cached_block)
+	add	a, 12			; Offset of reserved SST blocks (4 * 3)
+	call	dan_sst_sector_erase
 
-	;ld	a, (cached_block)
-	;add	a, 12
-	;ld	hl, (buffer_addr)
-	;call	dan_sst_sector_program
+	ld	a, (cached_block)
+	add	a, 12
+	ld	hl, (buffer_addr)
+	call	dan_sst_sector_program
 
         ; Switch to internal ROM and block commands afterwards
         ld      a, 40           ; Command 40
