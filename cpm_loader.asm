@@ -3,6 +3,11 @@
         ld      (ix + value_7ffd_offset), default_7ffd_value 
         ld      (ix + value_1ffd_offset), default_1ffd_value 
 
+	; Command 39 to dandanator
+	ld	a, 39
+	ld	hl, 1
+	call	relocation_area + ddntr_normal_command
+
         ; Copy FID loader to upper RAM (Bank 0: 0x1000)
         ld      hl, fid_loader
         ld      de, 0xd000
