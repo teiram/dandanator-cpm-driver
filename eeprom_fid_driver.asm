@@ -400,9 +400,11 @@ shift_to_slot:
         ld      bc, $1ffd
         out     (c), a
 
-	ld	b, 0
+	ld	bc, $0100
 sync_allram_exit_pause:
 	djnz	sync_allram_exit_pause
+	dec	c
+	jr	nz, sync_allram_exit_pause
 
         ; Unlock dandanator commands
         push    hl
@@ -450,9 +452,11 @@ sync_allram_exit_pause:
 	ld	bc, $7ffd
         out     (c), a
 
-	ld	b, 0
+	ld	bc, $0100
 sync_allram_enter_pause:
 	djnz	sync_allram_enter_pause
+	dec	c
+	jr	nz, sync_allram_enter_pause
 
         ei
 
