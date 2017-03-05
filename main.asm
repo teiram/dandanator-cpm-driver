@@ -1,9 +1,14 @@
 include constants.asm
 
-	org 0
+org 	0
 	
         di
         ld sp, stack_ptr
+        
+        ei
+        halt
+        halt
+        di
 
         ;; DEBUG
         ld      a, 1
@@ -16,6 +21,12 @@ include constants.asm
 
         jp      relocation_area
 
+org 	0x38
+
+	ei
+	ret
+		
+		
 relocated_area_start:
 include cpm_loader.asm
 include dandanator_reloc.asm

@@ -133,11 +133,8 @@ dan_unlock_command:
 	ld 	d, 16
 	ld 	a, 46
 	call 	dan_special_command
-	call 	dan_confirmation_pulse
-	ld 	a, 2			; page in slot 2
-	ld 	hl, 1
-	call 	dan_normal_command
-	ret
+	jp 	dan_confirmation_pulse
+;	ret					; one less push (jp instead of call/ret)
 ; ------------------------------------------------------------------------------
 
 ; ------------------------------------------------------------------------------
@@ -165,33 +162,33 @@ reset:
 dan_special_command:	
 	ld 	hl, ddntraddrcmd	; hl=0 command (zesarux)
 	call 	dan_normal_command	; send command 	
-	ld 	b,pauseloopsn		; drift more than 128us (timeout) and 
+;	ld 	b,pauseloopsn		; drift more than 128us (timeout) and 
 					; allow extra time before next command 
 					; (50=~180us)
-drift0:		
-	djnz 	drift0			; drift will allow for variances in pic
+;drift0:		
+;	djnz 	drift0			; drift will allow for variances in pic
 					; clock speed and spectrum type.
 			
 	inc 	hl			; hl=1 data1 (zesarux)
 	ld 	a, d			; data 1
 	call 	dan_normal_command	; send data 1
-	ld 	b, pauseloopsn		; drift more than 128us (timeout) and 
+;	ld 	b, pauseloopsn		; drift more than 128us (timeout) and 
 					; allow extra time before next command 
 					; (50=~180us)
-drift1:		
-	djnz 	drift1			; drift will allow for variances in pic
+;drift1:		
+;	djnz 	drift1			; drift will allow for variances in pic
 					; clock speed and spectrum type.
 			
 	inc 	hl			; hl=2 data2 (zesarux)
 	ld 	a, e			; data 2
-	call 	dan_normal_command	; send data 2
-	ld 	b, pauseloopsn		; drift more than 128us (timeout) and 
+	jp 	dan_normal_command	; send data 2
+;	ld 	b, pauseloopsn		; drift more than 128us (timeout) and 
 					; allow extra time before next command 
 					; (50=~180us)
-drift2:		
-	djnz 	drift2			; drift will allow for variances in pic
+;drift2:		
+;	djnz 	drift2			; drift will allow for variances in pic
 					; clock speed and spectrum type.
-	ret				; now about 4,8ms to confirm command 
+	;ret				; now about 4,8ms to confirm command 
 					; with a pulse to ddntraddrconf
 ; ------------------------------------------------------------------------------
 
@@ -208,8 +205,7 @@ drift2:
 dan_normal_command:	
 	ld 	b, a	
 nrcmdloop:	
-;	ex 	(sp), hl		; some time to avoid very fast pulses
-;	ex 	(sp), hl	
+	nop
 	nop
 	nop
 	nop
@@ -243,8 +239,8 @@ waitpause:
 ; ------------------------------------------------------------------------------
 dan_special_command_with_confirmation:
 	call	dan_special_command
-	call	dan_confirmation_pulse
-	ret
+	jp	dan_confirmation_pulse
+	;ret
 
 pauseloopsn 	equ 64
 ddntraddrcmd 	equ 1
