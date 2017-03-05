@@ -142,12 +142,12 @@ fid_loader2:
         ld      (scb_bios_drv), a    ; Default BIOS drive
         ld      (scb_ccp_drv), a     ; Default CCP drive
 fid_loader3:
-        ld      a, 0                 ; Search for FID in C
+        ld      a, 3                 ; Search for FID in C
         ld      (fid_mask), a
         jp      fid_search
 
 fid_name                db 'DDNTR   FID'
-fid_default_drive       db 0                  ;0 = A, 1 = B, 2 = C
+fid_default_drive       db 2                  ;0 = A, 1 = B, 2 = C
 fid_no_driver           db 0   
 
 fid_loader_end:
