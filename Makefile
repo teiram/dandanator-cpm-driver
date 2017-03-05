@@ -5,7 +5,7 @@ ddntr_eeprom.bin :  eeprom_fid_driver.bin $(DDNTR_SOURCES)
 	pasmo main.asm $@
 
 ddntr.rom : ddntr_eeprom.bin disk.raw slot31.raw
-	@cat ddntr_eeprom.bin disk.raw /dev/zero | dd iflag=fullblock bs=16384 count=31 | cat - slot31.raw > ddntr.rom
+	@cat ddntr_eeprom.bin disk.raw /dev/zero | dd bs=16384 count=31 | cat - slot31.raw > ddntr.rom
 
 eeprom_fid_driver.bin : eeprom_fid_driver.asm dandanator_api.asm debug_macros.asm
 	pasmo --prl eeprom_fid_driver.asm $@
