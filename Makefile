@@ -1,6 +1,6 @@
 all:    ddntr_eeprom.bin    ddntr.rom
 
-DDNTR_SOURCES = main.asm dandanator_reloc.asm cpm_loader.asm constants.asm
+DDNTR_SOURCES = main.asm dandanator_reloc.asm cpm_loader.asm constants.asm splash.scr
 ddntr_eeprom.bin :  eeprom_fid_driver.bin $(DDNTR_SOURCES)
 	pasmo main.asm $@
 
