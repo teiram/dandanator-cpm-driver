@@ -363,16 +363,15 @@ shift_pos:
 shift_to_block:
 	srl	h
 	rr	l
-	djnz	shift_to_block		; L holds now the eeprom 4k block
+	djnz	shift_to_block		; l holds now the eeprom 4k block
 	cp	l
 	jp	z, cached
+
+	call	save_current_block	; Save the current block if dirty
 	ld	a, l
 	ld	(cached_block), a	; Mark as cached, since there's no
 					; chance of controlled failure from 
 					; now on
-
-nocached:
-	call	save_current_block	; Save the current block if dirty
 
 	debug_border_colour 4
 
@@ -537,9 +536,9 @@ save_current_block:
         out     (c), a
 
         ; Restore $7ffd value
-        ld      a, (SVC_BANK_05)
-	ld	bc, $7ffd
-        out     (c), a
+        ;ld      a, (SVC_BANK_05)
+	;ld	bc, $7ffd
+        ;out     (c), a
 
         ei
 
