@@ -32,12 +32,12 @@ include cpm_loader.asm
 include dandanator_reloc.asm
 relocated_area_end:
 
-org 0x1000
+org 	0x1000
 fid_driver:
-incbin eeprom_fid_driver.bin
+incbin 	eeprom_fid_driver.bin
 fid_driver_end:
 
-org 0x4000
-incbin S10CPM3.EMS
+org 	0x4000
+incbin 	S10CPM3.EMS
 
-ds 0xc000 - $
+ds 	0xc000 - $

@@ -6,7 +6,7 @@
 ; erase sst39sf040 sector 
 ;     a  = sector number (39sf040 has 128 4k sectors)
 ;
-; *  Must be run from ram, di, and with external eeprom paged in  *
+; * Must be run from ram, di, and with external eeprom paged in
 ; ------------------------------------------------------------------------------
 dan_sst_sector_erase:
 	push 	af		; save sector number
@@ -117,7 +117,7 @@ pb_step4:
 	ld 	a,d		; check for 4096 iterations (d=0x_0, e=0x00)
 	and 	15		; get 4 lower bits
 	or 	e		; now also check for a 0x00 in e
-jr 	nz, sectlp
+	jr 	nz, sectlp
 	ret
 ; ------------------------------------------------------------------------------
 
@@ -134,7 +134,7 @@ dan_unlock_command:
 	ld 	a, 46
 	call 	dan_special_command
 	jp 	dan_confirmation_pulse
-;	ret					; one less push (jp instead of call/ret)
+;	ret				; one less push (jp instead of call/ret)
 ; ------------------------------------------------------------------------------
 
 ; ------------------------------------------------------------------------------
@@ -247,5 +247,5 @@ ddntraddrcmd 	equ 1
 j5555		equ $1555	; jedec $5555 with a15,a14=0 to force rom write
 				; (pic will set page 1 so final address will be
 				; $5555)
-j2aaa		equ	$2aaa	; jedec $2aaa, pic will select page 0
+j2aaa		equ $2aaa	; jedec $2aaa, pic will select page 0
 
