@@ -405,6 +405,14 @@ sync_allram_exit_pause:
 ;	dec	c
 ;	jr	nz, sync_allram_exit_pause
 
+
+	; Pause for PIC
+	ld	bc, $0400
+pause_pic0:
+	djnz	pause_pic0
+	dec	c
+	jr	nz, pause_pic0
+
         ; Unlock dandanator commands
         push    hl
 
@@ -504,6 +512,13 @@ save_current_block:
         and     $fe            		; Clear special mode banking
         ld      bc, $1ffd
         out     (c), a
+
+	; Pause for PIC
+	ld	bc, $0400
+pause_pic1:
+	djnz	pause_pic1
+	dec	c
+	jr	nz, pause_pic1
 
         ld      a, 46
         ld      d, 16
