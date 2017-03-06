@@ -5,11 +5,7 @@ org 	0
         di
         ld sp, stack_ptr
 
-        ; Set splash screen
-        ld      hl, screen
-        ld      de, 0x4000
-        ld      bc, screen_end - screen
-        ldir
+        call set_splash
         
         ei
         halt
@@ -38,7 +34,28 @@ org 	0x38
 
 	ei
 	ret
-		
+	
+set_splash: 
+	; Set splash screen on normal screen
+	ld      hl, screen
+	ld      de, $4000
+	ld      bc, screen_end - screen
+	ldir
+        
+        ; Set splash screen on shadow screen, page 7
+        ld 	bc, $7ffd	; Select Page 7 in upper ram
+        ld	a, 7
+        out 	(c),a
+
+        ld 	hl, screen
+        ld	de, $c000
+        ld	bc, screen_end - screen
+        ldir
+
+        ld 	bc, $7ffd 	; Go back to boot memory configuration
+        xor	a
+	out	(c), a
+	ret
 		
 relocated_area_start:
 include cpm_loader.asm
