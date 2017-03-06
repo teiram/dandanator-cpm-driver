@@ -1,5 +1,5 @@
 ; ------------------------------------------------------------------------------
-; ZX Dandanator! mini API for hw v1.1 
+; ZX Dandanator! mini API for hw v2
 ; Including eeprom write sst39sf040 functionality
 ; ------------------------------------------------------------------------------
 ; ------------------------------------------------------------------------------
@@ -126,15 +126,16 @@ pb_step4:
 ; ------------------------------------------------------------------------------
 ; Unlock dandanator commands - 
 ; * Must be run at the beginning of the code, needs sp set
-; * Also pages in slot 2
 ; ------------------------------------------------------------------------------
 dan_unlock_command:
+	ld b, 64
+wait_unlock: djnz wait_unlock
 	ld 	e, 16			; unlock commands
 	ld 	d, 16
 	ld 	a, 46
 	call 	dan_special_command
 	jp 	dan_confirmation_pulse
-;	ret				; one less push (jp instead of call/ret)
+
 ; ------------------------------------------------------------------------------
 
 ; ------------------------------------------------------------------------------
@@ -162,34 +163,15 @@ reset:
 dan_special_command:	
 	ld 	hl, ddntraddrcmd	; hl=0 command (zesarux)
 	call 	dan_normal_command	; send command 	
-;	ld 	b,pauseloopsn		; drift more than 128us (timeout) and 
-					; allow extra time before next command 
-					; (50=~180us)
-;drift0:		
-;	djnz 	drift0			; drift will allow for variances in pic
-					; clock speed and spectrum type.
 			
 	inc 	hl			; hl=1 data1 (zesarux)
 	ld 	a, d			; data 1
 	call 	dan_normal_command	; send data 1
-;	ld 	b, pauseloopsn		; drift more than 128us (timeout) and 
-					; allow extra time before next command 
-					; (50=~180us)
-;drift1:		
-;	djnz 	drift1			; drift will allow for variances in pic
-					; clock speed and spectrum type.
 			
 	inc 	hl			; hl=2 data2 (zesarux)
 	ld 	a, e			; data 2
 	jp 	dan_normal_command	; send data 2
-;	ld 	b, pauseloopsn		; drift more than 128us (timeout) and 
-					; allow extra time before next command 
-					; (50=~180us)
-;drift2:		
-;	djnz 	drift2			; drift will allow for variances in pic
-					; clock speed and spectrum type.
-	;ret				; now about 4,8ms to confirm command 
-					; with a pulse to ddntraddrconf
+
 ; ------------------------------------------------------------------------------
 
 ; ------------------------------------------------------------------------------
@@ -207,12 +189,9 @@ dan_normal_command:
 nrcmdloop:	
 	nop
 	nop
-	nop
-	nop
 	ld 	(hl), a			; send pulse			
 	djnz 	nrcmdloop
-	ld 	b, 128			; uncomment for full normalcommand 
-					; execution (must be run from ram)
+	ld 	b, pauseloopsn		; Timeout Command/Data
 waitxcmd:	
 	djnz 	waitxcmd				
 	ret							
@@ -240,9 +219,9 @@ waitpause:
 dan_special_command_with_confirmation:
 	call	dan_special_command
 	jp	dan_confirmation_pulse
-	;ret
 
-pauseloopsn 	equ 64
+
+pauseloopsn 	equ 32  ; adjusted value for CP/M
 ddntraddrcmd 	equ 1
 j5555		equ $1555	; jedec $5555 with a15,a14=0 to force rom write
 				; (pic will set page 1 so final address will be
