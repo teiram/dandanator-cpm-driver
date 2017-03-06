@@ -29,10 +29,9 @@
         ld      b, 4
         call    relocation_area + page_upper_bank_offset
         ; Ask dandanator to map slot 1 (Start of S10CPM3.EMS)
-        ld      a, 40           ; Command 40
-        ld      d, 1 + 1        ; Slot 1
-        ld      e, 0            ; Do nothing afterwards
-        call    relocation_area + ddntr_command
+        ld      a, 1 + 1	    ; Slot 1
+        ld      hl, 1
+        call    relocation_area + ddntr_normal_command
 
         ; Copy to RAM (bank 4: 0x0000)
         ld      hl, 0x0000
