@@ -142,7 +142,7 @@ dpblk:
         db      3       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
         db      7       ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
         db      0       ;exm. Extent mask                               +4
-        dw      174     ;dsm. Number of blocks on the disk - 1          +5
+        dw      255     ;dsm. Number of blocks on the disk - 1          +5
         dw      63      ;drm. Number of directory entries - 1           +7
         db      $c0     ;al0. Directory allocation bitmap (1st byte)    +9
         db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
