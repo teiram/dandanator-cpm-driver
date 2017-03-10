@@ -2,7 +2,7 @@ ddntraddrconf           equ     0
 ddntraddrcmd            equ     1
 ddntraddrdat1           equ     2
 ddntraddrdat2           equ     3
-pauseloopsn             equ     50
+pauseloopsn             equ     20
 
 ddntr_command   equ $ - relocated_area_start
 ;Send special command with long confirmation
@@ -17,14 +17,10 @@ nrcmdloop0:
         nop
         ld      (hl), a         ; Send Pulse			
         djnz    nrcmdloop0
-;        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
-                                ; (MUST BE RUN FROM RAM)
-;waitxcmd0:
-;        djnz    waitxcmd0				
-                                ; Will still take some time to perform actual 
-        ld      b,pauseloopsn           ; Drift more than 128us (timeout) and 
+
+        ld      b,pauseloopsn           ; Drift more than 32us (timeout) and 
                                         ; allow extra time before next command 
-                                        ; (50=~180us)
+                                        ; (20=~72us)
 drift0:		
         djnz    drift0                  ; Drift will allow for variances in PIC 
                                         ; clock Speed and Spectrum Type.
@@ -40,14 +36,10 @@ nrcmdloop1:
         nop
         ld      (hl), a         ; Send Pulse			
         djnz    nrcmdloop1
-;        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
-                                ; (MUST BE RUN FROM RAM)
-;waitxcmd1:
-;        djnz    waitxcmd1				
-                                ; Will still take some time to perform actual 
-        ld      b, pauseloopsn	        ; Drift more than 128us (timeout) and 
+		
+        ld      b, pauseloopsn	        ; Drift more than 32us (timeout) and 
                                         ; allow extra time before next command 
-                                        ; (50=~180us)
+                                        ; (20=~72us)
 drift1:
         djnz    drift1                  ; Drift will allow for variances in PIC 
                                         ; clock Speed and Spectrum Type.
@@ -62,14 +54,11 @@ nrcmdloop2:
         nop
         ld      (hl), a         ; Send Pulse			
         djnz    nrcmdloop2
-;        ld       b, 64	        ; Uncomment for Full NormalCommand execution 
-                                ; (MUST BE RUN FROM RAM)
-;waitxcmd2:
-;        djnz    waitxcmd2				
+
                                 ; Will still take some time to perform actual 
-        ld      b, pauseloopsn          ; Drift more than 128us (timeout) and 
+        ld      b, pauseloopsn          ; Drift more than 32us (timeout) and 
                                         ; allow extra time before next command 
-                                        ;(50=~180us)
+                                        ;(20=~72us)
 drift2:
         djnz drift2                     ; Drift will allow for variances in PIC 
                                         ; clock Speed and Spectrum Type.
@@ -79,16 +68,8 @@ drift2:
 
         ld      (ddntraddrconf), a      ;Signal Dandanator the command 
                                         ;confirmation (any A value for ZESARUX)
-        ld      b, 0					
+        ld      b, 64					;Wait for command to perform			
 pauselconf:
-        ex      (sp), hl
-        ex      (sp), hl
-        ex      (sp), hl
-        ex      (sp), hl
-        ex      (sp), hl
-        ex      (sp), hl
-        ex      (sp), hl
-        ex      (sp), hl
         djnz    pauselconf
         ret
 

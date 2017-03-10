@@ -1,7 +1,7 @@
 DEBUG			EQU 	0
 include 		debug_macros.asm
-SVC_BANK_05             EQU     $ + 0FE00h      ;Last value written to $7ffd
-SVC_BANK_68             EQU     $ + 0FE01h      ;Last value written to $1ffd
+SVC_BANK_05             EQU     $ + 0FE00h      ; Last value written to $7ffd
+SVC_BANK_68             EQU     $ + 0FE01h      ; Last value written to $1ffd
 SVC_SCB                 EQU     $ + 0FE03H      ; SCB Address
 SVC_D_HOOK              EQU     $ + 0FE05H      ; Hook in a disk device
 SVC_ALLOCATE            EQU     $ + 0FE07H      ; Allocate memory area
@@ -192,6 +192,7 @@ dpblk_end:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_READ:
+	di
 	call	fetch_block
 	jr	nc, error_fetch
 
@@ -210,6 +211,7 @@ FID_D_READ:
         ld      a, 0
         scf             ; Set carry (success)
 error_fetch:
+	ei
 	ret 
 
 ;=============================================
@@ -247,6 +249,8 @@ error_fetch:
 ;               C DE HL IX IY corrupt
 ;               All other registers preserved
 FID_D_WRITE:
+	di
+	push	bc
 	call	fetch_block	; Get the block to modify
 
         ; Calculate block offset in buffer_addr
@@ -263,8 +267,15 @@ FID_D_WRITE:
 	ld	a, 1
 	ld	(buffer_state), a	; Mark the buffer as dirty
 
+	pop	bc
+	ld	a, c
+	cp	$1
+	jr	nz, deferred_write
+	call	save_current_block
+deferred_write:
 	xor	a
         scf
+	ei
         ret
 
 ;=============================================
@@ -279,9 +290,11 @@ FID_D_WRITE:
 ;               $00 => OK
 ;               B corrupt
 FID_D_FLUSH:
+	di
 	call	save_current_block
         scf
         xor a
+        ei
         ret
 
 ;=============================================
@@ -320,6 +333,7 @@ FID_D_MESS:
 ;   Carry OK to denote success
 ;   No errors are possible so far
 ;   All registers corrupted (but alternate ones)
+; * Shall be entered with interrupts disabled
 ;===============================================================================
 fetch_block:
 	; Calculate track offset, assuming
@@ -382,7 +396,7 @@ shift_to_slot:
         rr      l
         djnz    shift_to_slot      	; l holds the slot offset
 					; 8 bits are enough (h must be zero)
-        di
+        ;di
 
         ; We need page 3 in $C000 to have access to CP/M variables
         ;    and also where the stack resides
@@ -399,19 +413,10 @@ shift_to_slot:
         ld      bc, $1ffd
         out     (c), a
 
-;	ld	bc, $0100
-sync_allram_exit_pause:
-;	djnz	sync_allram_exit_pause
-;	dec	c
-;	jr	nz, sync_allram_exit_pause
-
-
 	; Pause for PIC
-	ld	bc, $0400
-pause_pic0:
-	djnz	pause_pic0
-	dec	c
-	jr	nz, pause_pic0
+	ld	b, 32
+pause_pic_enter_load:
+	djnz	pause_pic_enter_load
 
         ; Unlock dandanator commands
         push    hl
@@ -454,20 +459,6 @@ pause_pic0:
 	ld	bc, $1ffd
         out     (c), a
 
-        ; Restore $7ffd value
-;        ld      a, (SVC_BANK_05)
-;	ld	bc, $7ffd
-;        out     (c), a
-
-;	Switching normal/special mode should be immediate
-;	ld	bc, $0100
-;sync_allram_enter_pause:
-;	djnz	sync_allram_enter_pause
-;	dec	c
-;	jr	nz, sync_allram_enter_pause
-
-        ei
-
 cached:
 	pop 	de	; Return in DE the block offset
         ld      a, 0
@@ -482,6 +473,7 @@ cached:
 ; Output status:
 ;   Carry OK to denote success
 ;   AF, DE, BC, HL preserved
+; * Shall be entered with interrupts disabled
 ;===============================================================================
 save_current_block:
 
@@ -498,8 +490,6 @@ save_current_block:
 	cp	$ff
 	jr	z, nosave_required
 
-        di
-
         ; We need page 3 in $C000 where the stack resides
         ld      a, (SVC_BANK_05)
         and     $f8
@@ -514,11 +504,9 @@ save_current_block:
         out     (c), a
 
 	; Pause for PIC
-	ld	bc, $0400
-pause_pic1:
-	djnz	pause_pic1
-	dec	c
-	jr	nz, pause_pic1
+	ld	b, 32
+pause_pic_enter_save:
+	djnz	pause_pic_enter_save
 
         ld      a, 46
         ld      d, 16
@@ -549,13 +537,6 @@ pause_pic1:
         ld      a, (SVC_BANK_68)
 	ld	bc, $1ffd
         out     (c), a
-
-        ; Restore $7ffd value
-        ;ld      a, (SVC_BANK_05)
-	;ld	bc, $7ffd
-        ;out     (c), a
-
-        ei
 
 	ld	a, 0
 	ld	(buffer_state), a
