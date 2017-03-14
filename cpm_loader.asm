@@ -20,9 +20,9 @@
         ldir
 
         ; Copy FID to upper RAM (Bank 0: 0x0100)
-        ld      hl, fid_driver
+        ld      hl, (fid_addr)
         ld      de, 0xc100
-        ld      bc, fid_driver_end - fid_driver
+        ld      bc, (fid_size)
         ldir
 
         ; Page bank 4 in
