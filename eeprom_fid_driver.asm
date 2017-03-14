@@ -139,16 +139,16 @@ FID_D_LOGON:
 ;DISK PARAMETER BLOCK
 dpblk:
         dw      36      ;spt. 128byte records per track                 +0
-        db      3       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
-        db      7       ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
+        db      4       ;bsh. Block shift. 3 = 1k, 4 = 2k, 5 = 4k...    +2
+        db      $f      ;blm. Block mask. 7 = 1k, F = 2k, 1F = 4k...    +3
         db      0       ;exm. Extent mask                               +4
-        dw      255     ;dsm. Number of blocks on the disk - 1          +5
-        dw      63      ;drm. Number of directory entries - 1           +7
-        db      $c0     ;al0. Directory allocation bitmap (1st byte)    +9
+        dw      223     ;dsm. Number of blocks on the disk - 1          +5
+        dw      127      ;drm. Number of directory entries - 1           +7
+        db      $f0     ;al0. Directory allocation bitmap (1st byte)    +9
         db      0       ;al1. Directory allocation bitmap (2nd byte)    +10
         dw      $8000   ;Checksum vector size, 0 for a fixed disc
                         ; No. directory entries/4, rounded up.          +11
-        dw      1       ;off. Number of reserved tracks                 +13
+        dw      0       ;off. Number of reserved tracks                 +13
         db      2       ;psh. Physical sector shift, 0 = 128-byte sectors
                         ;1 = 256-byte sectors,  2 = 512-byte sectors... +15
         db      3       ;phm. Physical sector mask,  0 = 128-byte sectors
