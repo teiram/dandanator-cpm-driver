@@ -26,4 +26,5 @@ screen_addr		equ	$000a
 screen_size		equ	$000c
 kloader_addr		equ	$000e
 kloader_size		equ	$0010
+kloader_scr_addr	equ	$0012
 bootstrap		equ	$0100
