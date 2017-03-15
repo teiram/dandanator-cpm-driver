@@ -18,13 +18,13 @@ fid_install             equ     0xebe9
 fid_mask                equ     0xeb7c
 
 ulaport                 equ     0xfe
+screen_location		equ	$4000
+kloader_entry_point	equ	$f000
 
 version_addr		equ	$0004
 fid_addr		equ	$0006
 fid_size		equ	$0008
 screen_addr		equ	$000a
 screen_size		equ	$000c
-kloader_addr		equ	$000e
-kloader_size		equ	$0010
-kloader_scr_addr	equ	$0012
+kloader_scr_addr	equ	$000e
 bootstrap		equ	$0100

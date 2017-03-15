@@ -1,6 +1,8 @@
-all:    loader.bin dandanator_fid_driver.bin
+TARGETS = loader.bin dandanator_fid_driver.bin
 
-DDNTR_SOURCES = main.asm dandanator_reloc.asm cpm_loader.asm constants.asm
+all:    $(TARGETS)
+
+DDNTR_SOURCES = main.asm dandanator_reloc.asm cpm_loader.asm constants.asm dzx7_turbo.asm 
 loader.bin :  $(DDNTR_SOURCES)
 	pasmo main.asm $@
 
@@ -9,4 +11,4 @@ dandanator_fid_driver.bin : eeprom_fid_driver.asm dandanator_api.asm debug_macro
 
 .PHONY : clean all zip
 clean: 
-	@rm -f *.bin
+	@rm -f $(TARGETS)

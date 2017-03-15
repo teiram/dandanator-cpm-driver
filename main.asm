@@ -48,6 +48,12 @@ pause_splash:
 	dec	c
 	jr	nz, pause_splash
 
+detect_keypress: 	; Detect L is pressed (A14=0, Data bit 1)
+	ld 	a, $bf 	; A14=0
+	in 	a, (ulaport)
+	bit 	1, a
+	jp 	z, kempston_loader
+
 
         ld      hl, relocated_area_start
         ld      de, relocation_area
@@ -59,3 +65,20 @@ relocated_area_start:
 include cpm_loader.asm
 include dandanator_reloc.asm
 relocated_area_end:
+
+kempston_loader:
+	ld 	de, $4000 		;Uncompress Screen
+	ld 	hl, (kloader_scr_addr)
+	call 	dzx7
+	ld 	hl, writer_code 	;Copy writer code to ram
+	ld 	de, kloader_entry_point
+	ld 	bc, writer_code_end-writer_code
+	ldir
+	jp 	kloader_entry_point	; jump to writer code
+
+dzx7:
+	include dzx7_turbo.asm 		; ZX7 decompression - Turbo version 
+writer_code:
+	incbin eewriter_romset.bin 	; Include binary for eewriter_romset 
+					; with $f000 org
+writer_code_end:

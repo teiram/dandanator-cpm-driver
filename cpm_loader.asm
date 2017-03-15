@@ -8,11 +8,6 @@
 	ld	hl, 1
 	call	relocation_area + ddntr_normal_command
 
-	ld 	a, 42     	; Left button launches slot 31 (Kempston Loader)
-	ld 	d, 32
-	ld 	e, 1
-	call  	relocation_area + ddntr_command
-
         ; Copy FID loader to upper RAM (Bank 0: 0x1000)
         ld      hl, fid_loader
         ld      de, 0xd000
